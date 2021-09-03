@@ -6,5 +6,5 @@ More comprehensive model has uploaded on [jiuge](http://jiuge.thunlp.org/) Syste
 
 ---
 
-The directory `os_model_ch_powm` can be downloaded  from
-`https://github.com/Morizeyao/GPT2-Chinese#%E6%A8%A1%E5%9E%8B%E5%88%86%E4%BA%AB`.
+The directory `os_model_ch_poem` contains three files: `pytorch_model.bin`, `config.json`,
+`vocab.txt`. They can be downloaded from [here](https://huggingface.co/uer/gpt2-chinese-poem).
