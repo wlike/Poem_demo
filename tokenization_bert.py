@@ -22,7 +22,8 @@ import os
 import unicodedata
 from io import open
 
-from pytorch_transformers.tokenization_utils import PreTrainedTokenizer, clean_up_tokenization
+#from pytorch_transformers.tokenization_utils import PreTrainedTokenizer, clean_up_tokenization
+from pytorch_transformers.tokenization_utils import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
