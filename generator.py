@@ -18,17 +18,21 @@ class BaseGenerator(object):
         self.context_len = len(self.generated[0])
         print("context_len: {}".format(self.context_len))
 
-    def filtering(self, logits, filter_value=-float('Inf')):
+    def filtering(self, logits, protect_token=None, filter_value=-float('Inf')):
         assert logits.dim() == 1
         # 将已生成的字设置为 -Inf，以避免重复生成
         generated = self.generated[0].tolist()
         generated = [index for index in generated if index != PAD_IDX and index != COMMA_IDX]
+        if protect_token is not None and protect_token in generated:
+            generated.remove(protect_token)
         for index in generated:
             logits[index] /= self.repetition_penalty
         # 限制可生成字的范围大小
         if self.top_k > 0:
             # 等价于: logits < torch.topk(logits, self.top_k)[0][-1].unsqueeze(0)
             indices_to_remove = logits < torch.topk(logits, self.top_k)[0][..., -1, None]
+            if protect_token is not None and protect_token in indices_to_remove:
+                indices_to_remove.remove(protect_token)
             logits[indices_to_remove] = filter_value
 
         return logits
@@ -78,6 +82,7 @@ class CheckedGenerator(BaseGenerator):
         print("prefix: {}".format(prefix))
         self.prefix = prefix
         self.prefix_idx = 0
+        self.cur_prefix = None
         # 当前生成的总汉字个数
         self.ch_cnt = 0
         # 每句的目标字数
@@ -91,7 +96,7 @@ class CheckedGenerator(BaseGenerator):
             else:  # self.subgenre == 'jue'
                 assert len(self.prefix) == 4
 
-    def filtering_with_check(self, logits, filter_value=-float('Inf')):
+    def filtering_with_check(self, logits, protect_token=None, filter_value=-float('Inf')):
         assert logits.dim() == 1
         tokens = self.tokenizer.convert_ids_to_tokens(self.generated[0].tolist())
         if tokens[-1] == '，':
@@ -112,7 +117,7 @@ class CheckedGenerator(BaseGenerator):
                 self.yun = tokens[-2]
                 print("odd_yun: {}".format(self.yun))
             self.pattern = self.checker.getpattern(self.pattern_label, self.subgenre)
-            return self.filtering_with_labels(logits)
+            return self.filtering_with_labels(logits, protect_token)
         else:
             # 首句不入韵时，根据第二句确定韵
             # 绝句第二、四句押韵，首句(第一句)可押可不押
@@ -122,41 +127,49 @@ class CheckedGenerator(BaseGenerator):
                 print("even_yun: {}".format(self.yun))
 
             if self.pattern_label == None:
-                return super().filtering(logits)
+                return super().filtering(logits, protect_token)
             else:
-                return self.filtering_with_labels(logits)
+                return self.filtering_with_labels(logits, protect_token)
 
-    def filtering_with_labels(self, logits):
+    def filtering_with_labels(self, logits, protect_token=None):
         self.count += 1
         if self.count >= len(self.pattern):
-            return super().filtering(logits)
+            return super().filtering(logits, protect_token)
         else:
             current = self.pattern[self.count]
             if current == ' ':
                 self.count += 1
                 current = self.pattern[self.count]
             if current == '0':
-                return super().filtering(logits)
+                return super().filtering(logits, protect_token)
             elif current == '1':
                 if self.position == self.target_interval_length - 1 and self.yun != None:
-                    logits = self.filteringYun(logits)
-                return self.filteringPing(logits)
+                    logits = self.filteringYun(logits, protect_token)
+                return self.filteringPing(logits, protect_token)
             else:  # current == '2'
-                return self.filteringZe(logits)
+                return self.filteringZe(logits, protect_token)
 
-    def filteringPing(self, logits, filter_value=-float('Inf')):
+    #
+    # 为了保留 protect_token，会部分破坏古诗的平仄规律(目前对藏头诗生效)
+    #
+    def filteringPing(self, logits, protect_token=None, filter_value=-float('Inf')):
         pingindex = self.checker.get_zeindex(self.tokenizer)
+        if protect_token is not None and protect_token in pingindex:
+            pingindex.remove(protect_token)
         logits[pingindex] = filter_value
-        return super().filtering(logits)
+        return super().filtering(logits, protect_token)
 
-    def filteringZe(self, logits, filter_value=-float('Inf')):
+    def filteringZe(self, logits, protect_token=None, filter_value=-float('Inf')):
         zeindex = self.checker.get_pingindex(self.tokenizer)
+        if protect_token is not None and protect_token in zeindex:
+            zeindex.remove(protect_token)
         logits[zeindex] = filter_value
-        return super().filtering(logits)
+        return super().filtering(logits, protect_token)
 
-    def filteringYun(self, logits, filter_value=-float('Inf')):
+    def filteringYun(self, logits, protect_token=None, filter_value=-float('Inf')):
         entire = set(range(len(logits)))
         yun = self.checker.get_yunindex(self.yun, self.tokenizer)
+        # 韵脚都在句尾，对于藏头诗没有影响，因此不处理 protect_token
         left = entire - set(yun)
         logits[list(left)] = filter_value
         return logits
@@ -202,10 +215,13 @@ class CheckedGenerator(BaseGenerator):
                     token_ids = torch.tensor([i for i in range(self.tokenizer.vocab_size)], dtype=torch.long, device=self.device)
                     non_prefix_ids = (token_ids != self.prefix[self.prefix_idx])
                     next_token_logits[non_prefix_ids] = -float('Inf')
+                    self.cur_prefix = self.prefix[self.prefix_idx]
                     self.prefix_idx += 1
-                filtered_logits = self.filtering_with_check(next_token_logits)
+                filtered_logits = self.filtering_with_check(next_token_logits, self.cur_prefix)
                 if filtered_logits is None:
                     return None
+                if self.prefix is not None and filtered_logits[self.cur_prefix] == -float('Inf'):
+                    filtered_logits[self.cur_prefix] = 1.
                 next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
                 print('next_token: {}'.format(next_token))
                 next_token_str = self.tokenizer.convert_ids_to_tokens(next_token)[0]

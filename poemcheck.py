@@ -31,7 +31,6 @@ class Checker(object):
                                   "0211221": "0102211 0102112 0211221"}
 
         self.yundict = self.initial_yundic()
-        print("yundict: {}".format(self.yundict))
         with open("cache/zetable.txt", "r", encoding="utf-8") as f:
             self.zetable = f.read()
         with open("cache/pingtable.txt", "r", encoding="utf-8") as f:

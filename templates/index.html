@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<style>
+body {
+}
+</style>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>古诗生成</title>
+</head>
+	<p>欢迎访问古诗生成服务</p>
+	<!--<p>目前，支持生成五言绝句、七言绝句、五言律诗、七言律诗，以及藏头诗</p>
+	<p>可以通过访问 "/poem/generate?genre=xxx&prefix=yyy" 获取结果</p>
+	<p>其中，"xxx"是int类型，取值范围0~3，分别对应上面的五言绝句、七言绝句、五言律诗、七言律诗</p>
+	<p>"yyy"是藏头诗的前缀，对于绝句，是4个汉字，对于律诗，是8个汉字，也可以不指定</p>
+	<p>示例："/poem/generate?genre=1&prefix=一往无前"</p>-->
+	<br><br>
+	<form action="/poem/generate" method="post" accept-charset="utf-8">
+		请选择古诗类型：<br><br>
+		<input type="radio" name="genre" value="0">五言绝句
+		<input type="radio" name="genre" value="1">七言绝句
+		<input type="radio" name="genre" value="2">五言律诗
+		<input type="radio" name="genre" value="3">七言律诗
+		<br>
+		<br>
+		请设置藏头词(可选)：<br><br>
+		<input type="text" name="prefix" style="width: 350px; height: 30px;" placeholder="对于绝句，是4个汉字；对于律诗，是8个汉字">
+		</input>
+		<br>
+		<br>
+		<input type="submit" value="生成">
+	</form>
+	<br>
+	<textarea rows="10" style="width: 350px; font-size: 20px">{{poem}}</textarea>
+<body>
+</body>
+</html>

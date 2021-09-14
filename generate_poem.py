@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+import json
 import os
 import sys
 from tqdm import tqdm
@@ -30,20 +32,27 @@ if os.access("prefixes.txt", os.R_OK):
 
 poem = Poem(model_path, model_config, vocab_file)
 
+sample = 100
+
 results = []
 if len(prefixes) == 0:
     for item in tqdm(keywords):
-        result = poem.generate(title=item, prefix=None, genre=genre)
-        print("result: {}".format(result))
-        results.append(item + " # " + result)
+        for idx in range(sample):
+            result = poem.generate(title=item, prefix=None, genre=genre)
+            print("result: {}".format(result))
+            results.append(item + " # " + str(idx) + " # " + result)
 else:
     for item in tqdm(keywords):
         for pre in tqdm(prefixes):
-            result = poem.generate(title=item, prefix=pre, genre=genre)
-            print("result: {}".format(result))
-            results.append(item + ' # ' + result)
+            for idx in range(sample):
+                result = poem.generate(title=item, prefix=pre, genre=genre)
+                print("result: {}".format(result))
+                results.append(pre + " # " + str(idx) + " # " + result)
 
 res_file = "result_" + genre2ch[genre] + ".txt"
 with open(res_file, 'w', encoding='utf-8') as f:
     for res in results:
-        f.write(res + "\n")
+        prefix, idx, content = res.split(' # ')
+        sents = content[:-1].split("，")
+        f.write(json.dumps({"prefix": prefix, "idx": int(idx), "content": sents}, ensure_ascii=False))
+        f.write("\n")

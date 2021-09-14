@@ -17,7 +17,6 @@ class Poem():
         self.checker = Checker()
         with open('cache/label_to_id.json', 'r', encoding='utf-8') as f:
             self.title_to_ids = json.load(f)
-        print('title_to_ids: {}'.format(self.title_to_ids))
 
     def load_model(self, model_path='cache/model/model_epoch_1.pt',
                    model_config='cache/model_config.json', device='cpu'):
@@ -27,6 +26,10 @@ class Poem():
         model_config = GPT2Config.from_json_file(model_config)
         model = GPT2LMHeadModel(config=model_config)
         model_state_dict = torch.load(model_path)
+        if 'state_dict' in model_state_dict:
+            model_state_dict = {
+                key[6:]: value for key, value in model_state_dict['state_dict'].items()
+            }
         model.load_state_dict(model_state_dict)
         model.to(self.device)
         model.eval()
@@ -49,21 +52,29 @@ class Poem():
         text_genre = text_genre_list[genre]
         genre_code = genre_code_list[genre]
 
-        ids = self.title_to_ids[text_genre]
-        context_tokens.append(ids)
+        #context_tokens.append(self.tokenizer.convert_tokens_to_ids('[CLS]'))
+
+        #ids = self.title_to_ids[text_genre]
+        #context_tokens.append(ids)
+        context_tokens.extend(self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(text_genre)))
         print('context_tokens: {}'.format(context_tokens))
 
-        context_tokens.append(MASK_IDX)
+        #context_tokens.append(MASK_IDX)
+        context_tokens.append(self.tokenizer.convert_tokens_to_ids('。'))
+        #context_tokens.append(self.tokenizer.convert_tokens_to_ids('[SEP]'))
 
         print('title: {}'.format(title))
 
-        context_tokens.extend(
-            self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(title)))
-        context_tokens.append(JING_IDX)
+        #context_tokens.extend(
+        #    self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(title)))
+        #context_tokens.append(JING_IDX)
         print('context_tokens: {}'.format(context_tokens))
 
         if prefix is not None:
             prefix = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(prefix))
+            context_tokens.extend(prefix)
+            context_tokens.append(self.tokenizer.convert_tokens_to_ids('。'))
+        #context_tokens.append(self.tokenizer.convert_tokens_to_ids('[SEP]'))
 
         out = None
         while out is None:
