@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package language;
+
+// The poem generation service definition.
+service PoemGeneration {
+  // Generate a poem
+  rpc Generate (GenRequest) returns (GenReply) {}
+}
+
+message GenRequest {
+  uint32 genre = 1;
+  string prefix = 2;
+}
+
+message GenReply {
+  string poem = 1;
+}

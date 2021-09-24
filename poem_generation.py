@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, render_template, abort, jsonify
-from jiuge_lvshi import Poem
 import json
 import logging
+
+from flask import Flask, request, render_template
+
+from jiuge_lvshi import Poem
 from utils import *
 
 model_path = 'model_jl/epoch=0-step=49999.ckpt'
